@@ -104,7 +104,7 @@
     </style>
   </head>
   <body>
-    <div class="page">
+    <main class="page">
       <header>
         <div class="eyebrow">Internships</div>
         <h1>Find it. Save it.<br />Come back to it.</h1>
@@ -121,10 +121,10 @@
         <section aria-labelledby="saved-title">
           <h2 id="saved-title">Saved jobs <span class="count" id="saved-count">0</span></h2>
           <p id="saved-empty">Nothing saved yet. Press Save on a job and it shows up here.</p>
-          <ul id="saved"></ul>
+          <ul id="saved" aria-live="polite"></ul>
         </section>
       </div>
-    </div>
+    </main>
     <script type="module" src="/app.js"></script>
   </body>
 </html>
