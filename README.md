@@ -43,7 +43,7 @@ Run the tests:
 
     node --test
 
-Expected result: 17 passed, 0 failed.
+Expected result: 20 passed, 0 failed.
 
 ### Implementation
 
@@ -58,7 +58,7 @@ The store is in lib/saved.js, the routes are in server.js, and the interface is 
 
 The saved list stores job IDs rather than copies of job details. Titles, companies and stipends come from jobs.json, so there is only one place to update them.
 
-Writes are queued to avoid overlapping updates. Each update is written to a temporary file before replacing the saved file.
+Writes are queued to avoid overlapping updates. Each update is written to a temporary file before replacing the saved file. If a write fails, the temporary file is removed, the saved file is left as it was, and the API returns a 500 with a clear message.
 
 ### Testing
 
