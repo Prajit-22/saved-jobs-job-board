@@ -41,7 +41,7 @@ Saving the same job twice keeps one copy. An unknown job id gives `404` with `{ 
 
 **Run it:** `npm start`, then open http://localhost:3000. Saved ids are written to `data/saved.json` (created on first save, ignored by git).
 
-**Tests:** `npm test`. The new tests are in `test/saved.test.js` and cover the store (save, list, remove, duplicates, bad ids, many saves at once, a damaged file) and the HTTP API (including errors and a restart).
+**Tests:** `npm test`. The new tests are in `test/saved.test.js` and cover the store (save, list, remove, duplicates, bad ids, many saves at once, a damaged file, and a project folder with spaces in its name, which is what broke on Windows) and the HTTP API (including errors and a restart).
 
 **Files:** `lib/saved.js` is the store, `server.js` has the routes, `public/app.js` and `public/index.html` have the page.
 
