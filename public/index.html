@@ -58,7 +58,6 @@
       .info { flex: 1; min-width: 0; }
       .title { font-weight: 600; }
       .meta { color: var(--muted); font-size: 14px; margin-top: 2px; }
-      .pay { color: var(--green); font-size: 14px; font-weight: 600; margin-top: 6px; }
       button {
         background: transparent;
         border: 1px solid var(--green);
@@ -81,6 +80,20 @@
       #saved-empty { background: transparent; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); font-size: 14px; margin: 0; padding: 18px; }
       #message { color: var(--danger); font-size: 14px; margin: 0 0 12px; min-height: 0; }
       #message:empty { display: none; }
+      .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+      .chip { border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 12px; padding: 2px 9px; }
+      .chip.pay { border-color: var(--green-soft); background: var(--green-soft); color: var(--green); font-weight: 600; margin: 0; }
+      .meta { margin-top: 2px; }
+      .result-count { color: var(--muted); font-size: 13px; margin: -8px 0 14px; }
+      #none { border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); font-size: 14px; margin: 0; padding: 18px; }
+      button svg { fill: none; height: 14px; margin-right: 6px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; vertical-align: -2px; width: 14px; }
+      button.is-saved svg { fill: var(--green); }
+      button:active:not(:disabled) { transform: scale(.97); }
+      li.enter { animation: rise .25s ease-out both; }
+      li.fresh { animation: flash 1s ease-out; }
+      @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+      @keyframes flash { from { background: var(--green-soft); } to { background: var(--card); } }
+      @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
       @media (max-width: 800px) {
         .layout { grid-template-columns: 1fr; }
         .layout > section:last-child { order: -1; position: static; }
@@ -101,7 +114,9 @@
         <section aria-labelledby="all-title">
           <h2 id="all-title">All jobs</h2>
           <input id="search" type="search" placeholder="Search by title, company or place" aria-label="Search jobs" />
+          <p class="result-count" id="result-count" aria-live="polite"></p>
           <ul id="jobs"></ul>
+          <p id="none" hidden>No jobs match that search.</p>
         </section>
         <section aria-labelledby="saved-title">
           <h2 id="saved-title">Saved jobs <span class="count" id="saved-count">0</span></h2>
