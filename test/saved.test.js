@@ -1,6 +1,8 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, readFile, cp } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp } from "../server.js";
@@ -109,4 +111,23 @@ test("api: saved jobs survive a restart", async () => {
   await withServer(async (base) => {
     assert.deepEqual((await (await fetch(`${base}/api/saved`)).json()).map((j) => j.id), ["j3"]);
   }, file);
+});
+
+test("default file location is a real path, also in a folder with spaces", async () => {
+  // Copy the app into a folder with a space in its name (like "New folder" on Windows)
+  // and save a job through the DEFAULT location. This failed before, when the URL's raw
+  // .pathname ("/C:/New%20folder/...") was used as a file path.
+  const root = join(dir, "my folder", "app");
+  await cp(new URL("../", import.meta.url), root, {
+    recursive: true,
+    filter: (src) => !/node_modules|[\\/]data([\\/]|$)|[\\/]\.git/.test(src),
+  });
+  const load = (file) => import(pathToFileURL(join(root, file)).href);
+  const { createSavedStore: make } = await load("lib/saved.js");
+  const { loadJobs } = await load("lib/jobs.js");
+  const store = make({ jobs: await loadJobs(pathToFileURL(join(root, "jobs.json"))) });
+  await store.save("j1");
+  assert.ok(existsSync(join(root, "data", "saved.json")), "saved.json is created inside the app folder");
+  assert.equal(existsSync(join(dir, "my%20folder")), false, "no folder with an encoded name is created");
+  assert.deepEqual((await store.list()).map((j) => j.id), ["j1"]);
 });
