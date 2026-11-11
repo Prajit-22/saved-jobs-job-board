@@ -131,3 +131,43 @@ test("default file location is a real path, also in a folder with spaces", async
   assert.equal(existsSync(join(dir, "my%20folder")), false, "no folder with an encoded name is created");
   assert.deepEqual((await store.list()).map((j) => j.id), ["j1"]);
 });
+
+test("api: simultaneous first requests do not lose saves", async () => {
+  // The store is created on the first request. Several requests arriving together
+  // must share ONE store, or their file writes can overwrite each other.
+  await withServer(async (base) => {
+    const ids = ["j1", "j2", "j3", "j4", "j5", "j6", "j7", "j8"];
+    const results = await Promise.all(ids.map((jobId) => post(base, { jobId })));
+    assert.ok(results.every((r) => r.status === 201));
+    const saved = (await (await fetch(`${base}/api/saved`)).json()).map((j) => j.id);
+    assert.deepEqual(saved.sort(), ids);
+  });
+});
+
+test("api: wrong method on a saved route gets 405 with an Allow header", async () => {
+  await withServer(async (base) => {
+    let res = await fetch(`${base}/api/saved`, { method: "PUT" });
+    assert.equal(res.status, 405);
+    assert.equal(res.headers.get("allow"), "GET, POST");
+    res = await fetch(`${base}/api/saved/j1`, { method: "GET" });
+    assert.equal(res.status, 405);
+    assert.equal(res.headers.get("allow"), "DELETE");
+    assert.match((await res.json()).error, /not allowed/i);
+  });
+});
+
+test("api: a badly encoded job id is a 400, not a crash", async () => {
+  await withServer(async (base) => {
+    const res = await fetch(`${base}/api/saved/%E0%A4%A`, { method: "DELETE" });
+    assert.equal(res.status, 400);
+    assert.equal((await fetch(`${base}/api/saved`)).status, 200);
+  });
+});
+
+test("api: an id with special characters is looked up as given", async () => {
+  await withServer(async (base) => {
+    const res = await fetch(`${base}/api/saved/${encodeURIComponent("a/b c")}`, { method: "DELETE" });
+    assert.equal(res.status, 404);
+    assert.match((await res.json()).error, /a\/b c/);
+  });
+});
