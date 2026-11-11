@@ -171,3 +171,39 @@ test("api: an id with special characters is looked up as given", async () => {
     assert.match((await res.json()).error, /a\/b c/);
   });
 });
+
+test("store: an empty or whitespace-only id is a 400 for save and remove", async () => {
+  const store = createSavedStore({ jobs, path: join(dir, "blank.json") });
+  for (const id of ["", " ", "  \t\n"]) {
+    await assert.rejects(store.save(id), { status: 400 });
+    await assert.rejects(store.remove(id), { status: 400 });
+  }
+  assert.deepEqual(await store.list(), []);
+});
+
+test("api: a whitespace-only id is a 400 (POST body and DELETE path)", async () => {
+  await withServer(async (base) => {
+    assert.equal((await post(base, { jobId: "   " })).status, 400);
+    assert.equal((await fetch(`${base}/api/saved/%20%20`, { method: "DELETE" })).status, 400);
+    assert.equal((await fetch(`${base}/api/saved/`, { method: "DELETE" })).status, 400);
+  });
+});
+
+test("store: a failed write is reported, cleans up its temp file and keeps old data", async () => {
+  const path = join(dir, "failing.json");
+  const good = createSavedStore({ jobs, path });
+  await good.save("a");
+  const removed = [];
+  const fs = {
+    ...(await import("node:fs/promises")),
+    rename: async () => { throw Object.assign(new Error("disk full"), { code: "ENOSPC" }); },
+    rm: async (p, o) => { removed.push(p); return (await import("node:fs/promises")).rm(p, o); },
+  };
+  const broken = createSavedStore({ jobs, path, fs });
+  await assert.rejects(broken.save("b"), { status: 500, message: /Could not save/ });
+  assert.equal(removed.length, 1);
+  assert.equal(existsSync(removed[0]), false);
+  assert.deepEqual((await good.list()).map((j) => j.id), ["a"]);
+  // The store still works after a failure.
+  assert.deepEqual((await createSavedStore({ jobs, path }).save("b")).map((j) => j.id), ["a", "b"]);
+});
