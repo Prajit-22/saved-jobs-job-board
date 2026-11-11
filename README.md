@@ -25,28 +25,51 @@ npm test       # runs the tests in test/
 See the work sample brief on insiderOne: add saved jobs (save, list, remove),
 with tests, and add a short section to this README about what you built.
 
-## Saved jobs (what I added)
+## Saved jobs
 
-Each job has a Save button. A "Saved jobs" list sits above the full list, with a Remove button on each saved job. Saved jobs are kept on the server, so they are still there after a reload or restart.
+This adds a saved-jobs list to the starter job board. Save a job, find it in the Saved panel, or remove it when it is no longer needed. The list survives page refreshes and server restarts.
 
-**API**
+### Run and test
 
-| Call | Result |
-| --- | --- |
-| `POST /api/saved` with `{ "jobId": "j1" }` | `201` and the full saved list |
-| `GET /api/saved` | `200` and the saved jobs, in the order they were saved |
-| `DELETE /api/saved/:jobId` | `200` and the saved list after removal |
+Requires Node.js 20 or newer. No extra packages or installation steps are needed.
 
-Saving the same job twice keeps one copy. An unknown job id gives `404` with `{ "error": "No job with id ..." }`. A missing id or bad JSON gives `400`. Removing a job that is not saved gives `404`.
+Start the app:
 
-**Run it:** `npm start`, then open http://localhost:3000. Saved ids are written to `data/saved.json` (created on first save, ignored by git).
+    node server.js
 
-**Tests:** `npm test`. The new tests are in `test/saved.test.js` and cover the store (save, list, remove, duplicates, bad ids, many saves at once, a damaged file, and a project folder with spaces in its name, which is what broke on Windows) and the HTTP API (including errors, wrong methods, a bad id encoding, requests that arrive together on a fresh server, and a restart)
+Open http://localhost:3000 in a browser.
 
-**Files:** `lib/saved.js` is the store, `server.js` has the routes, `public/app.js` and `public/index.html` have the page.
+Run the tests:
 
-**One decision:** the store keeps only job ids in the file, and looks up the job details from `jobs.json` each time. That way the saved list never holds stale copies if a job's details change, and a job that was removed from `jobs.json` simply stops showing. The cost is one lookup per saved job, which is nothing at this size. Writes are queued one at a time and go through a temp file and rename, so two quick requests cannot overwrite each other and a crash cannot leave a half-written file.
+    node --test
 
-**What I would do next:** save per user (this version has one shared list, as there are no accounts), add a way to show only saved jobs in search, and show a small "saved" count in the page title.
+Expected result: 17 passed, 0 failed.
 
-**AI use:** this was built with AI assistance (code, tests and this section were drafted with an AI coding assistant, then run and checked by running the tests and the app). The starter files `lib/jobs.js`, `jobs.json` and the original three tests are unchanged.
+### Implementation
+
+- Added Save and Remove buttons, a saved-job count, and a search empty state.
+- Added POST /api/saved, GET /api/saved and DELETE /api/saved/:jobId.
+- Saved job IDs are stored in data/saved.json, which is created on the first save.
+- Saving the same job twice keeps one entry. Invalid requests and unknown IDs return JSON errors.
+
+The store is in lib/saved.js, the routes are in server.js, and the interface is in public/index.html and public/app.js. Tests are in test/saved.test.js.
+
+### A design choice
+
+The saved list stores job IDs rather than copies of job details. Titles, companies and stipends come from jobs.json, so there is only one place to update them.
+
+Writes are queued to avoid overlapping updates. Each update is written to a temporary file before replacing the saved file.
+
+### Testing
+
+Tests cover saving, listing, removing, duplicate saves, invalid IDs, concurrent saves, damaged files, API errors and persistence after a restart.
+
+Local testing on Windows caught a file-path bug that the original tests missed. The fix uses fileURLToPath instead of a URL pathname. A regression test now runs the app from a folder with spaces in its name.
+
+### With more time
+
+The next step would be separate saved lists for individual users. This version has one shared list because the starter has no accounts. A saved-only search filter would also be useful.
+
+### AI assistance
+
+Built with an AI coding assistant for the implementation, tests and README. I tested the app on Windows, reported a file-path issue and verified the corrected version.
