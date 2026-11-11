@@ -5,12 +5,15 @@ const search = document.getElementById("search");
 const message = document.getElementById("message");
 
 let savedIds = new Set();
+let entering = true; // cards fade in on first load only, not on every refresh
+let justSaved = null; // id of the job saved last, so its card in the saved list can flash once
 
 const savedCount = document.getElementById("saved-count");
 
 // One job as a card: initial, title, company and place, stipend, then the action button.
 function card(job, action) {
   const li = document.createElement("li");
+  if (entering) li.classList.add("enter");
   const mark = document.createElement("div");
   mark.className = "mark";
   mark.textContent = job.company.charAt(0);
@@ -21,11 +24,17 @@ function card(job, action) {
   title.textContent = job.title;
   const meta = document.createElement("div");
   meta.className = "meta";
-  meta.textContent = `${job.company} \u00b7 ${job.location}`;
-  const pay = document.createElement("div");
-  pay.className = "pay";
-  pay.textContent = `Rs ${job.stipend.toLocaleString("en-IN")} a month`;
-  info.append(title, meta, pay);
+  meta.textContent = job.company;
+  const chips = document.createElement("div");
+  chips.className = "chips";
+  for (const [text, extra] of [[job.location, ""], [`Rs ${job.stipend.toLocaleString("en-IN")} / month`, " pay"]]) {
+    const chip = document.createElement("span");
+    chip.className = `chip${extra}`;
+    chip.textContent = text;
+    chips.append(chip);
+  }
+  info.append(title, meta, chips);
+  if (justSaved === job.id && action.classList.contains("remove")) li.classList.add("fresh");
   li.append(mark, info, action);
   return li;
 }
@@ -37,10 +46,13 @@ async function api(path, options) {
   return body;
 }
 
-function button(label, onClick) {
+const BOOKMARK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg>';
+
+function button(label, onClick, icon = false) {
   const b = document.createElement("button");
   b.type = "button";
-  b.textContent = label;
+  if (icon) b.innerHTML = BOOKMARK;
+  b.append(label);
   b.addEventListener("click", onClick);
   return b;
 }
@@ -61,22 +73,26 @@ function renderSaved(jobs) {
 async function show(query = "") {
   const jobs = await api(`/api/jobs?q=${encodeURIComponent(query)}`);
   list.innerHTML = "";
+  document.getElementById("none").hidden = jobs.length > 0;
+  document.getElementById("result-count").textContent = `${jobs.length} ${jobs.length === 1 ? "job" : "jobs"}`;
   for (const job of jobs) {
     const saved = savedIds.has(job.id);
     const b = button(saved ? "Saved" : "Save", () => change("/api/saved", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ jobId: job.id }),
-    }));
+    }, job.id), true);
     b.disabled = saved;
+    b.classList.toggle("is-saved", saved);
     b.setAttribute("aria-label", `${saved ? "Saved" : "Save"} ${job.title} at ${job.company}`);
     list.append(card(job, b));
   }
 }
 
 // Save or remove, then refresh both lists from what the server now holds.
-async function change(path, options) {
+async function change(path, options, savedJobId = null) {
   message.textContent = "";
+  justSaved = savedJobId;
   try {
     renderSaved(await api(path, options));
     await show(search.value);
@@ -92,6 +108,7 @@ async function start() {
   } catch (err) {
     message.textContent = err.message;
   }
+  entering = false;
 }
 
 search.addEventListener("input", () => show(search.value).catch((e) => (message.textContent = e.message)));
