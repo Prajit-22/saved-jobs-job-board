@@ -71,8 +71,12 @@ function renderSaved(jobs) {
   }
 }
 
+let latestSearch = 0; // each search gets a number; only the newest one may draw its results
+
 async function show(query = "") {
+  const mine = ++latestSearch;
   const jobs = await api(`/api/jobs?q=${encodeURIComponent(query)}`);
+  if (mine !== latestSearch) return; // a newer search started while this one was loading
   list.innerHTML = "";
   document.getElementById("none").hidden = jobs.length > 0;
   document.getElementById("result-count").textContent = `${jobs.length} ${jobs.length === 1 ? "job" : "jobs"}`;
