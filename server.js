@@ -12,6 +12,11 @@ function sendJson(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
+function methodNotAllowed(res, allow) {
+  res.writeHead(405, { "content-type": "application/json; charset=utf-8", allow });
+  res.end(JSON.stringify({ error: "Method not allowed" }));
+}
+
 async function readJsonBody(req) {
   let raw = "";
   for await (const chunk of req) {
@@ -27,12 +32,19 @@ async function readJsonBody(req) {
 
 /** `savedPath` lets tests use a temporary file instead of data/saved.json. */
 export function createApp({ savedPath } = {}) {
-  let store;
-  const getStore = async () => (store ??= createSavedStore({ jobs: await loadJobs(), path: savedPath }));
+  // Keep the promise, not the finished store: requests that arrive together on the
+  // first call then wait for the same store instead of each making their own.
+  let storePromise;
+  const getStore = () => (storePromise ??= loadJobs().then((jobs) => createSavedStore({ jobs, path: savedPath })));
 
   return createServer(async (req, res) => {
     try {
       const url = new URL(req.url ?? "/", "http://localhost");
+      const isSavedItem = url.pathname.startsWith("/api/saved/");
+      if (url.pathname === "/api/saved" && !["GET", "POST"].includes(req.method)) {
+        return methodNotAllowed(res, "GET, POST");
+      }
+      if (isSavedItem && req.method !== "DELETE") return methodNotAllowed(res, "DELETE");
       if (url.pathname === "/api/saved" && req.method === "GET") {
         return sendJson(res, 200, await (await getStore()).list());
       }
@@ -40,8 +52,13 @@ export function createApp({ savedPath } = {}) {
         const body = await readJsonBody(req);
         return sendJson(res, 201, await (await getStore()).save(body?.jobId));
       }
-      if (url.pathname.startsWith("/api/saved/") && req.method === "DELETE") {
-        const jobId = decodeURIComponent(url.pathname.slice("/api/saved/".length));
+      if (isSavedItem && req.method === "DELETE") {
+        let jobId;
+        try {
+          jobId = decodeURIComponent(url.pathname.slice("/api/saved/".length));
+        } catch {
+          throw new SavedError("Job id is not valid", 400);
+        }
         return sendJson(res, 200, await (await getStore()).remove(jobId));
       }
       if (req.method === "GET" && url.pathname === "/api/jobs") {
