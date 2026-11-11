@@ -12,6 +12,7 @@ const savedCount = document.getElementById("saved-count");
 
 // One job as a card: initial, title, company and place, stipend, then the action button.
 function card(job, action) {
+  action.dataset.jobId = job.id;
   const li = document.createElement("li");
   if (entering) li.classList.add("enter");
   const mark = document.createElement("div");
@@ -63,7 +64,7 @@ function renderSaved(jobs) {
   savedEmpty.hidden = jobs.length > 0;
   savedCount.textContent = jobs.length;
   for (const job of jobs) {
-    const remove = button("Remove", () => change(`/api/saved/${encodeURIComponent(job.id)}`, { method: "DELETE" }));
+    const remove = button("Remove", () => change(`/api/saved/${encodeURIComponent(job.id)}`, { method: "DELETE" }, null, `#jobs button[data-job-id="${job.id}"]`));
     remove.className = "remove";
     remove.setAttribute("aria-label", `Remove ${job.title} at ${job.company}`);
     savedList.append(card(job, remove));
@@ -81,7 +82,7 @@ async function show(query = "") {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ jobId: job.id }),
-    }, job.id), true);
+    }, job.id, `#saved button[data-job-id="${job.id}"]`), true);
     b.disabled = saved;
     b.classList.toggle("is-saved", saved);
     b.setAttribute("aria-label", `${saved ? "Saved" : "Save"} ${job.title} at ${job.company}`);
@@ -90,12 +91,14 @@ async function show(query = "") {
 }
 
 // Save or remove, then refresh both lists from what the server now holds.
-async function change(path, options, savedJobId = null) {
+async function change(path, options, savedJobId = null, focusSelector = null) {
   message.textContent = "";
   justSaved = savedJobId;
   try {
     renderSaved(await api(path, options));
     await show(search.value);
+    // The lists are rebuilt, so put keyboard focus on the matching button again.
+    if (focusSelector) document.querySelector(focusSelector)?.focus();
   } catch (err) {
     message.textContent = err.message;
   }
