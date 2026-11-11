@@ -5,23 +5,111 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Job board</title>
     <style>
-      body { font-family: system-ui, sans-serif; margin: 0 auto; max-width: 640px; padding: 16px; }
-      li { border: 1px solid #ddd; border-radius: 8px; list-style: none; margin: 8px 0; padding: 12px; }
-      ul { padding: 0; }
-      button { margin-left: 8px; }
-      #message { color: #b00020; }
-      input { font-size: 16px; padding: 8px; width: 100%; box-sizing: border-box; }
+      :root {
+        --paper: #f6f2e8;
+        --card: #fffdf8;
+        --ink: #1d2a22;
+        --muted: #66736a;
+        --line: #ddd6c4;
+        --green: #1f4d36;
+        --green-soft: #e3ece4;
+        --danger: #9b2c2c;
+      }
+      * { box-sizing: border-box; }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        line-height: 1.45;
+        margin: 0;
+      }
+      .page { margin: 0 auto; max-width: 1040px; padding: 40px 20px 72px; }
+      header { margin-bottom: 28px; }
+      .eyebrow { color: var(--green); font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+      h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(34px, 6vw, 52px); font-weight: 600; letter-spacing: -.02em; line-height: 1.05; margin: 8px 0 0; }
+      h2 { align-items: center; display: flex; font-size: 13px; font-weight: 600; gap: 10px; letter-spacing: .1em; margin: 0 0 14px; text-transform: uppercase; }
+      .count { background: var(--green); border-radius: 999px; color: #fff; font-size: 12px; letter-spacing: 0; min-width: 22px; padding: 1px 8px; text-align: center; }
+      .layout { align-items: start; display: grid; gap: 32px; grid-template-columns: minmax(0, 1fr) 340px; }
+      .layout > section:last-child { order: 2; position: sticky; top: 20px; }
+      input[type="search"], #search {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        color: var(--ink);
+        font-size: 16px;
+        margin-bottom: 20px;
+        padding: 13px 14px;
+        width: 100%;
+      }
+      #search:focus, button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+      ul { display: grid; gap: 10px; list-style: none; margin: 0; padding: 0; }
+      li {
+        align-items: center;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        display: flex;
+        gap: 14px;
+        padding: 14px 16px;
+        transition: border-color .15s, transform .15s;
+      }
+      li:hover { border-color: var(--green); }
+      .mark { align-items: center; background: var(--green-soft); border-radius: 10px; color: var(--green); display: flex; flex: none; font-family: Georgia, serif; font-size: 18px; font-weight: 700; height: 42px; justify-content: center; width: 42px; }
+      .info { flex: 1; min-width: 0; }
+      .title { font-weight: 600; }
+      .meta { color: var(--muted); font-size: 14px; margin-top: 2px; }
+      .pay { color: var(--green); font-size: 14px; font-weight: 600; margin-top: 6px; }
+      button {
+        background: transparent;
+        border: 1px solid var(--green);
+        border-radius: 8px;
+        color: var(--green);
+        cursor: pointer;
+        flex: none;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        padding: 7px 14px;
+        transition: background .15s, color .15s;
+      }
+      button:hover:not(:disabled) { background: var(--green); color: #fff; }
+      button:disabled { background: var(--green-soft); border-color: var(--green-soft); cursor: default; }
+      button.remove { border-color: var(--line); color: var(--muted); font-size: 13px; padding: 5px 10px; }
+      button.remove:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
+      #saved li { padding: 12px 14px; }
+      #saved .mark { height: 36px; width: 36px; font-size: 15px; }
+      #saved-empty { background: transparent; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); font-size: 14px; margin: 0; padding: 18px; }
+      #message { color: var(--danger); font-size: 14px; margin: 0 0 12px; min-height: 0; }
+      #message:empty { display: none; }
+      @media (max-width: 800px) {
+        .layout { grid-template-columns: 1fr; }
+        .layout > section:last-child { order: -1; position: static; }
+        li { align-items: flex-start; flex-wrap: wrap; }
+        .info { flex-basis: calc(100% - 60px); }
+        li > button { margin-left: 56px; }
+      }
     </style>
   </head>
   <body>
-    <h1>Jobs</h1>
-    <input id="search" placeholder="Search by title, company or place" />
-    <p id="message" role="alert"></p>
-    <h2>Saved jobs</h2>
-    <p id="saved-empty">Nothing saved yet.</p>
-    <ul id="saved"></ul>
-    <h2>All jobs</h2>
-    <ul id="jobs"></ul>
+    <div class="page">
+      <header>
+        <div class="eyebrow">Internships</div>
+        <h1>Find it. Save it.<br />Come back to it.</h1>
+      </header>
+      <p id="message" role="alert"></p>
+      <div class="layout">
+        <section aria-labelledby="all-title">
+          <h2 id="all-title">All jobs</h2>
+          <input id="search" type="search" placeholder="Search by title, company or place" aria-label="Search jobs" />
+          <ul id="jobs"></ul>
+        </section>
+        <section aria-labelledby="saved-title">
+          <h2 id="saved-title">Saved jobs <span class="count" id="saved-count">0</span></h2>
+          <p id="saved-empty">Nothing saved yet. Press Save on a job and it shows up here.</p>
+          <ul id="saved"></ul>
+        </section>
+      </div>
+    </div>
     <script type="module" src="/app.js"></script>
   </body>
 </html>
