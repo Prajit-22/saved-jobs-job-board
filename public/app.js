@@ -6,8 +6,28 @@ const message = document.getElementById("message");
 
 let savedIds = new Set();
 
-function describe(job) {
-  return `${job.title} at ${job.company}, ${job.location}. Rs ${job.stipend.toLocaleString("en-IN")} a month.`;
+const savedCount = document.getElementById("saved-count");
+
+// One job as a card: initial, title, company and place, stipend, then the action button.
+function card(job, action) {
+  const li = document.createElement("li");
+  const mark = document.createElement("div");
+  mark.className = "mark";
+  mark.textContent = job.company.charAt(0);
+  const info = document.createElement("div");
+  info.className = "info";
+  const title = document.createElement("div");
+  title.className = "title";
+  title.textContent = job.title;
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  meta.textContent = `${job.company} \u00b7 ${job.location}`;
+  const pay = document.createElement("div");
+  pay.className = "pay";
+  pay.textContent = `Rs ${job.stipend.toLocaleString("en-IN")} a month`;
+  info.append(title, meta, pay);
+  li.append(mark, info, action);
+  return li;
 }
 
 async function api(path, options) {
@@ -29,10 +49,12 @@ function renderSaved(jobs) {
   savedIds = new Set(jobs.map((j) => j.id));
   savedList.innerHTML = "";
   savedEmpty.hidden = jobs.length > 0;
+  savedCount.textContent = jobs.length;
   for (const job of jobs) {
-    const li = document.createElement("li");
-    li.append(describe(job), " ", button("Remove", () => change(`/api/saved/${encodeURIComponent(job.id)}`, { method: "DELETE" })));
-    savedList.append(li);
+    const remove = button("Remove", () => change(`/api/saved/${encodeURIComponent(job.id)}`, { method: "DELETE" }));
+    remove.className = "remove";
+    remove.setAttribute("aria-label", `Remove ${job.title} at ${job.company}`);
+    savedList.append(card(job, remove));
   }
 }
 
@@ -40,8 +62,6 @@ async function show(query = "") {
   const jobs = await api(`/api/jobs?q=${encodeURIComponent(query)}`);
   list.innerHTML = "";
   for (const job of jobs) {
-    const li = document.createElement("li");
-    li.append(describe(job), " ");
     const saved = savedIds.has(job.id);
     const b = button(saved ? "Saved" : "Save", () => change("/api/saved", {
       method: "POST",
@@ -49,8 +69,8 @@ async function show(query = "") {
       body: JSON.stringify({ jobId: job.id }),
     }));
     b.disabled = saved;
-    li.append(b);
-    list.append(li);
+    b.setAttribute("aria-label", `${saved ? "Saved" : "Save"} ${job.title} at ${job.company}`);
+    list.append(card(job, b));
   }
 }
 
